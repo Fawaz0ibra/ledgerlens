@@ -1,0 +1,4 @@
+# The build context is sent to the Docker engine; keep it to what the image needs.
+.venv/
+__pycache__/
+*.pyc

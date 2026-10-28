@@ -1,0 +1,35 @@
+# Secrets. Ignoring them is the first net only: `git add -f` gets past it, gitleaks is the second.
+.env
+.env.*
+!.env.example
+
+# Data never goes in git (see data/README.md). Only the policy file is tracked.
+data/*
+!data/README.md
+
+# Model weights and checkpoints: too large for git, and each has its own licence.
+models/
+*.safetensors
+*.gguf
+*.pt
+*.pth
+*.ckpt
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

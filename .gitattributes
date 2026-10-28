@@ -1,0 +1,10 @@
+# Store and check out every text file with LF line endings, whichever OS edits it.
+# Shell scripts and Dockerfiles with Windows CRLF endings break inside Linux containers.
+* text=auto eol=lf
+
+# Binary files: never convert or diff them as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.parquet binary

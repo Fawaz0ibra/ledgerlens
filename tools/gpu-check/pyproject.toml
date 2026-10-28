@@ -1,0 +1,13 @@
+[project]
+name = "gpu-check"
+version = "0.1.0"
+description = "Checks that PyTorch can see and use the GPU, on the host or in a container."
+requires-python = "==3.12.*"
+dependencies = [
+    "numpy==2.5.4",
+    "torch==2.14.1",
+]
+
+[tool.uv]
+# This only ever runs on Linux x86_64 (WSL and containers), so lock for that platform alone.
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]

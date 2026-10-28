@@ -1,0 +1,28 @@
+# One GPU service and one database, on a private network that Compose creates.
+name: gpu-lab
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.20.0@sha256:9bfc89f9914fc14876a88c05270685921a55b8877b254a98bcc1cc2f0a424cd2
+    volumes:
+      - qdrant-data:/qdrant/storage  # named volume: Docker manages it, and it outlives the container
+    # No `ports:`. Only services on this network need Qdrant, so nothing is opened to Windows.
+
+  app:
+    build: .  # built from this folder's Dockerfile the first time, then reused
+    image: gpu-check:dev
+    command: ["python", "src/stack_check.py"]
+    volumes:
+      - ./:/app/src:ro  # bind mount: the code comes from the host, read-only, so edits need no rebuild
+    depends_on:
+      - qdrant  # start order only: it does not wait until Qdrant is ready
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  qdrant-data:
