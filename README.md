@@ -13,6 +13,8 @@ tested against our own synthetic bilingual Arabic/English invoices.
 
 | Path | What it holds |
 |---|---|
+| `src/ledgerlens/contracts/` | The invoice contract (Pydantic models) and its arithmetic and tax checks |
+| `scripts/invoice_demo.py` | A runnable tour of the contract: `uv run scripts/invoice_demo.py` |
 | `docs/adr/` | Decision records: what we chose, what we rejected, and the numbers behind it |
 | `data/README.md` | The data policy and the register of datasets we use |
 | `tools/gpu-check/` | Checks that PyTorch can use the GPU, on the host and inside Docker |
