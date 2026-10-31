@@ -1,32 +1,18 @@
 """A tour of the invoice contract. Run from the repo root:  uv run scripts/invoice_demo.py
 
-The vendors are fictional and the VAT numbers follow the test-only pattern in data/README.md.
+The sample invoice is scripts/sample_invoice.json. Its vendors are fictional and its VAT numbers follow
+the test-only pattern in data/README.md.
 """
 
 import copy
 import json
+from pathlib import Path
 
 from pydantic import ValidationError
 
 from ledgerlens.contracts import Invoice, check_invoice
 
-GOOD = {
-    "invoice_number": "INV-2026-0001",
-    "invoice_type": "standard",
-    "issue_date": "2026-10-30",
-    "currency": "SAR",
-    "seller": {"name_en": "Example Trading Co.", "name_ar": "شركة المثال للتجارة", "vat_number": "399999999900013"},
-    "buyer": {"name_en": "Sample Buyer Ltd.", "name_ar": "شركة العينة المحدودة", "vat_number": "399999999900023"},
-    "lines": [
-        {"description_en": "A4 paper, box of 5 reams", "description_ar": "ورق A4، علبة 5 رزم",
-         "quantity": "10", "unit_price": "25.00", "vat_rate": "0.15", "line_total": "250.00"},
-        {"description_en": "Ink cartridge", "description_ar": "خرطوشة حبر",
-         "quantity": "2", "unit_price": "89.50", "vat_rate": "0.15", "line_total": "179.00"},
-    ],
-    "subtotal": "429.00",
-    "vat_total": "64.35",
-    "total": "493.35",
-}
+GOOD = json.loads(Path(__file__).with_name("sample_invoice.json").read_text(encoding="utf-8"))
 
 
 def section(title: str) -> None:

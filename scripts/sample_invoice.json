@@ -1,0 +1,37 @@
+{
+  "invoice_number": "INV-2026-0001",
+  "invoice_type": "standard",
+  "issue_date": "2026-10-30",
+  "currency": "SAR",
+  "seller": {
+    "name_en": "Example Trading Co.",
+    "name_ar": "شركة المثال للتجارة",
+    "vat_number": "399999999900013"
+  },
+  "buyer": {
+    "name_en": "Sample Buyer Ltd.",
+    "name_ar": "شركة العينة المحدودة",
+    "vat_number": "399999999900023"
+  },
+  "lines": [
+    {
+      "description_en": "A4 paper, box of 5 reams",
+      "description_ar": "ورق A4، علبة 5 رزم",
+      "quantity": "10",
+      "unit_price": "25.00",
+      "vat_rate": "0.15",
+      "line_total": "250.00"
+    },
+    {
+      "description_en": "Ink cartridge",
+      "description_ar": "خرطوشة حبر",
+      "quantity": "2",
+      "unit_price": "89.50",
+      "vat_rate": "0.15",
+      "line_total": "179.00"
+    }
+  ],
+  "subtotal": "429.00",
+  "vat_total": "64.35",
+  "total": "493.35"
+}
