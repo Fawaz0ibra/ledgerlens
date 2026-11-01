@@ -34,9 +34,7 @@ class _ExactJSONRequest(Request):
     """Reads JSON numbers as Decimal. FastAPI's default reads them as float, which can change an amount."""
 
     async def json(self) -> Any:
-        if not hasattr(self, "_json"):
-            self._json = json.loads(await self.body(), parse_float=Decimal)
-        return self._json
+        return json.loads(await self.body(), parse_float=Decimal)
 
 
 class _ExactJSONRoute(APIRoute):

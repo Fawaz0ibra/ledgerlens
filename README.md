@@ -7,8 +7,8 @@ The planned pipeline: invoice → layout detection and OCR → a fine-tuned extr
 data validation → multi-agent review (policy lookup, anomaly checks) → human approval. Everything is
 tested against our own synthetic bilingual Arabic/English invoices.
 
-**Status:** the invoice contract and an HTTP API that checks invoices sent as JSON. Nothing reads
-invoice images yet.
+**Status:** the invoice contract and an HTTP API that checks invoices sent as JSON, with tests. Nothing
+reads invoice images yet.
 
 ## Layout
 
@@ -16,6 +16,7 @@ invoice images yet.
 |---|---|
 | `src/ledgerlens/contracts/` | The invoice contract (Pydantic models) and its arithmetic and tax checks |
 | `src/ledgerlens/api/` | The HTTP service: settings, JSON logs, health checks, error responses, the invoice check |
+| `tests/` | pytest tests for the contract, the checks and the API; shared fixtures are in `conftest.py` |
 | `scripts/invoice_demo.py` | A runnable tour of the contract: `uv run scripts/invoice_demo.py` |
 | `scripts/api_demo.py` | Sends example requests to a running API: `uv run scripts/api_demo.py` |
 | `scripts/sample_invoice.json` | The synthetic sample invoice both demos use |
@@ -40,6 +41,16 @@ uv run uvicorn ledgerlens.api.app:create_app --factory
 
 Interactive docs are at http://127.0.0.1:8000/docs. Settings come from `LEDGERLENS_*` environment
 variables or a git-ignored `.env` file; [.env.example](.env.example) lists them.
+
+## Running the tests
+
+```bash
+uv run pytest          # every test
+uv run pytest --cov    # the same, plus coverage: fails unless every line and branch ran
+```
+
+Any warning fails the run (`filterwarnings = ["error"]` in `pyproject.toml`), so a deprecation is
+dealt with when it first appears.
 
 ## Data
 

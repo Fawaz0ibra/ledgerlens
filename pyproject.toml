@@ -18,3 +18,28 @@ dependencies = [
 [build-system]
 requires = ["uv_build>=0.13.5,<0.14.0"]
 build-backend = "uv_build"
+
+[tool.pytest]
+testpaths = ["tests"]
+# -ra: after the run, list every test that didn't pass, with the reason.
+addopts = ["-ra"]
+# Every warning fails the run. A deprecation shows up the day it appears, not the day the feature is removed.
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+source = ["ledgerlens"]
+# Count both outcomes of every if, not just whether the line ran.
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+# Every line and branch must run under the tests. A line that truly can't gets "# pragma: no cover"
+# with a reason, so the exception is visible in review.
+fail_under = 100
+
+[dependency-groups]
+dev = [
+    "httpx2==2.16.0",
+    "pytest==9.2.0",
+    "pytest-cov==7.1.0",
+]
