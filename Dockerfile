@@ -7,7 +7,8 @@
 # image we run.
 
 # Python 3.12.16 on Debian trixie, pinned by digest. Both stages use the same base because the virtual
-# environment points at /usr/local/bin/python3.12: the interpreter must be at that path in both.
+# environment belongs to one Python: it starts /usr/local/bin/python3 and keeps its packages in
+# lib/python3.12. Under any other Python version, those packages aren't found.
 FROM python:3.12.16-slim-trixie@sha256:b18b261e1b4974b4f321451ad5251ded85abb22c2b8b262da527dda1d031ab30 AS build
 
 COPY --from=ghcr.io/astral-sh/uv:0.13.5@sha256:32a7bb39b496babbd997b0a39a4d66c126bdaf5661b302bf6f06abda8deca6ff /uv /bin/uv
