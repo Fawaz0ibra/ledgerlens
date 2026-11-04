@@ -6,7 +6,7 @@ instead of failing on some later request.
 
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     # extra="ignore": .env may also hold settings for other tools; only LEDGERLENS_* ones are ours.
     model_config = SettingsConfigDict(env_prefix="LEDGERLENS_", env_file=".env", extra="ignore", frozen=True)
 
+    # postgresql://USER:PASSWORD@HOST:5432/DBNAME. No default: the service can't do its job without a
+    # database, so a missing URL stops it at start-up. SecretStr prints as ********** in logs and errors.
+    database_url: SecretStr
     environment: Literal["dev", "test", "prod"] = "dev"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     # An invoice is a few KB of JSON. A body near this size is a mistake or an attack.

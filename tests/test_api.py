@@ -2,6 +2,7 @@
 
 import json
 import re
+from collections.abc import Iterator
 from typing import Any
 
 import pytest
@@ -15,6 +16,10 @@ from ledgerlens.api.settings import Settings
 CHECK = "/v1/invoices/check"
 JSON = {"Content-Type": "application/json"}
 
+# Nothing listens on port 1, so every connection attempt is refused at once. Not a real password.
+PASSWORD = "not-a-real-password"
+UNREACHABLE = f"postgresql://ledgerlens:{PASSWORD}@127.0.0.1:1/ledgerlens"
+
 
 # --- Health -------------------------------------------------------------------------------------------
 
@@ -26,6 +31,31 @@ def test_live_always_but_ready_only_while_started(settings):
     with TestClient(app) as started:
         assert started.get("/health/ready").json() == {"status": "ready"}
     assert not_started.get("/health/ready").status_code == 503  # shutdown ran when the `with` ended
+
+
+@pytest.fixture
+def client_without_database() -> Iterator[TestClient]:
+    """The app with a database URL that nothing answers.
+
+    Built in a fixture, not in the test: create_app sets up logging, which replaces every log handler,
+    including the one caplog collects with. pytest adds caplog's back when the test itself starts.
+    """
+    settings = Settings(_env_file=None, environment="test", database_url=UNREACHABLE)
+    with TestClient(create_app(settings)) as client:
+        yield client
+
+
+def test_ready_needs_the_database_but_live_does_not(client_without_database, caplog):
+    caplog.handler.setFormatter(JsonFormatter())  # as the service writes them, extra fields included
+    assert client_without_database.get("/health/live").status_code == 200
+    assert client_without_database.get("/health/ready").status_code == 503
+    # The first check proves caplog collected lines, so the second can't pass just because it saw none.
+    assert "database not answering" in caplog.messages
+    assert PASSWORD not in caplog.text
+
+
+def test_settings_never_print_the_database_password():
+    assert PASSWORD not in repr(Settings(_env_file=None, database_url=UNREACHABLE))
 
 
 # --- Checking invoices --------------------------------------------------------------------------------
@@ -104,8 +134,8 @@ def test_a_crash_is_a_500_that_hides_the_internals(settings):
     assert response.json()["request_id"] == response.headers["x-request-id"]
 
 
-def test_a_body_over_the_limit_is_refused(invoice_data):
-    small = Settings(_env_file=None, environment="test", max_body_bytes=100)
+def test_a_body_over_the_limit_is_refused(database_url, invoice_data):
+    small = Settings(_env_file=None, environment="test", database_url=database_url, max_body_bytes=100)
     with TestClient(create_app(small)) as client:
         response = client.post(CHECK, json=invoice_data)
     assert response.status_code == 413
@@ -141,8 +171,9 @@ def test_log_lines_carry_the_request_id_and_no_invoice_contents(client, invoice_
 # --- Settings -----------------------------------------------------------------------------------------
 
 @pytest.mark.parametrize(("environment", "status"), [("dev", 200), ("prod", 404)])
-def test_the_api_schema_is_hidden_in_prod(environment, status):
-    with TestClient(create_app(Settings(_env_file=None, environment=environment))) as client:
+def test_the_api_schema_is_hidden_in_prod(database_url, environment, status):
+    settings = Settings(_env_file=None, environment=environment, database_url=database_url)
+    with TestClient(create_app(settings)) as client:
         assert client.get("/openapi.json").status_code == status
 
 
@@ -152,6 +183,16 @@ def test_the_api_schema_is_hidden_in_prod(environment, status):
     ("LEDGERLENS_ENVIRONMENT", "staging"),
 ])
 def test_a_bad_setting_stops_the_app_before_it_starts(monkeypatch, variable, value):
-    monkeypatch.setenv(variable, value)  # monkeypatch undoes this when the test ends
-    with pytest.raises(ValidationError, match=variable.removeprefix("LEDGERLENS_").lower()):
+    # monkeypatch undoes both when the test ends. A valid URL, so the bad setting is the only problem.
+    monkeypatch.setenv("LEDGERLENS_DATABASE_URL", UNREACHABLE)
+    monkeypatch.setenv(variable, value)
+    with pytest.raises(ValidationError, match=variable.removeprefix("LEDGERLENS_").lower()) as caught:
         create_app()
+    assert caught.value.error_count() == 1
+
+
+def test_a_missing_database_url_stops_the_app_before_it_starts(monkeypatch):
+    monkeypatch.delenv("LEDGERLENS_DATABASE_URL", raising=False)
+    with pytest.raises(ValidationError, match="database_url") as caught:
+        Settings(_env_file=None)
+    assert caught.value.error_count() == 1

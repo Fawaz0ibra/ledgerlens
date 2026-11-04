@@ -20,7 +20,7 @@ from fastapi.routing import APIRoute
 from pydantic import BaseModel
 from starlette.middleware.body_limit import RequestBodyLimitMiddleware
 
-from ledgerlens.api import errors, logs
+from ledgerlens.api import database, errors, logs
 from ledgerlens.api.settings import Settings
 from ledgerlens.contracts import Finding, Invoice, check_invoice
 
@@ -64,8 +64,8 @@ async def live() -> dict[str, str]:
 
 @health.get("/ready")
 async def ready(request: Request) -> JSONResponse:
-    """The service can take traffic now. If this fails, send traffic elsewhere until it passes."""
-    if not request.app.state.ready:
+    """The service has started and Postgres answers. If this fails, send traffic elsewhere until it passes."""
+    if not request.app.state.started or not await database.answers(request.app.state.db):
         return JSONResponse({"status": "not ready"}, status_code=503)
     return JSONResponse({"status": "ready"})
 
@@ -84,11 +84,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        # Later lessons connect to Postgres and the model server here. Until then, started means ready.
-        app.state.ready = True
-        log.info("ready", extra={"fields": {"environment": settings.environment}})
+        # Doesn't wait for Postgres: the service starts either way, and readiness says when it can work.
+        app.state.db = await database.open_pool(settings.database_url.get_secret_value())
+        app.state.started = True
+        log.info("started", extra={"fields": {"environment": settings.environment}})
         yield
-        app.state.ready = False
+        app.state.started = False
+        await app.state.db.close()
         log.info("stopped")
 
     app = FastAPI(
@@ -98,7 +100,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # No interactive docs or schema in prod: callers there get the schema from us, not from the service.
         openapi_url=None if settings.environment == "prod" else "/openapi.json",
     )
-    app.state.ready = False
+    app.state.started = False
     app.include_router(health)
     app.include_router(invoices)
     errors.install(app)

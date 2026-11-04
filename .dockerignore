@@ -1,0 +1,9 @@
+# The build context: what `docker build .` sends to Docker. This is an allowlist. Everything is left
+# out except the lines starting with !, so a new file (a secret, a dataset) stays out until it's listed.
+*
+!pyproject.toml
+!uv.lock
+!README.md
+!src
+**/__pycache__
+**/*.py[cod]

@@ -7,8 +7,8 @@ The planned pipeline: invoice → layout detection and OCR → a fine-tuned extr
 data validation → multi-agent review (policy lookup, anomaly checks) → human approval. Everything is
 tested against our own synthetic bilingual Arabic/English invoices.
 
-**Status:** the invoice contract and an HTTP API that checks invoices sent as JSON, with tests. Nothing
-reads invoice images yet.
+**Status:** the invoice contract and an HTTP API that checks invoices sent as JSON, with tests, shipped
+as a container image and run next to Postgres with docker compose. Nothing reads invoice images yet.
 
 ## Layout
 
@@ -17,6 +17,8 @@ reads invoice images yet.
 | `src/ledgerlens/contracts/` | The invoice contract (Pydantic models) and its arithmetic and tax checks |
 | `src/ledgerlens/api/` | The HTTP service: settings, JSON logs, health checks, error responses, the invoice check |
 | `tests/` | pytest tests for the contract, the checks and the API; shared fixtures are in `conftest.py` |
+| `Dockerfile`, `.dockerignore` | The API image, built in two stages ([ADR 0004](docs/adr/0004-container-image-two-stages-on-slim.md)) |
+| `compose.yaml` | The API and its Postgres database on one machine |
 | `scripts/invoice_demo.py` | A runnable tour of the contract: `uv run scripts/invoice_demo.py` |
 | `scripts/api_demo.py` | Sends example requests to a running API: `uv run scripts/api_demo.py` |
 | `scripts/sample_invoice.json` | The synthetic sample invoice both demos use |
@@ -35,14 +37,23 @@ pre-commit install
 
 ## Running the API
 
+The API needs Postgres. Compose runs both; it reads the database password from a git-ignored `.env`:
+
 ```bash
-uv run uvicorn ledgerlens.api.app:create_app --factory
+echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)" >> .env   # once
+docker compose up -d --build
+curl localhost:8000/health/ready                           # {"status":"ready"} once Postgres answers
+docker compose down                                        # the database volume stays
 ```
 
 Interactive docs are at http://127.0.0.1:8000/docs. Settings come from `LEDGERLENS_*` environment
-variables or a git-ignored `.env` file; [.env.example](.env.example) lists them.
+variables or the `.env` file; [.env.example](.env.example) lists them. To run the service outside
+compose (`uv run uvicorn ledgerlens.api.app:create_app --factory`), set `LEDGERLENS_DATABASE_URL`.
 
 ## Running the tests
+
+Docker must be running: the API tests start a throwaway Postgres in a container (testcontainers) and
+remove it at the end.
 
 ```bash
 uv run pytest          # every test

@@ -2,18 +2,23 @@
 
 import copy
 import json
+import secrets
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from testcontainers.community.postgres import PostgresContainer
 
 from ledgerlens.api.app import create_app
 from ledgerlens.api.settings import Settings
 
 # The synthetic invoice the demo scripts use: right shape, right numbers.
 _SAMPLE = json.loads((Path(__file__).parents[1] / "scripts" / "sample_invoice.json").read_text(encoding="utf-8"))
+
+# The same Postgres image as compose.yaml. Change both together.
+POSTGRES_IMAGE = "postgres:18.6-trixie@sha256:3a4264520e121176619f54ff867d12774bc81e95e7b84db58d63bccdb6144b81"
 
 
 @pytest.fixture
@@ -39,10 +44,24 @@ def invoice_with() -> Callable[[dict[str, Any]], dict[str, Any]]:
     return build
 
 
+@pytest.fixture(scope="session")
+def database_url() -> Iterator[str]:
+    """A real Postgres in a throwaway container: started once for the whole run, removed at the end.
+
+    Needs Docker running. The port is opened on 127.0.0.1 only, and the password is new each run.
+    """
+    postgres = PostgresContainer(POSTGRES_IMAGE, password=secrets.token_hex(16), driver=None)
+    # A random free port on 127.0.0.1, not on every network interface. testcontainers has no option for
+    # this, so we set Docker's own form of the binding (address, no port) directly.
+    postgres.ports["5432"] = ("127.0.0.1",)
+    with postgres:
+        yield postgres.get_connection_url()
+
+
 @pytest.fixture
-def settings() -> Settings:
+def settings(database_url: str) -> Settings:
     # _env_file=None: a .env file on the developer's machine can't change what the tests see.
-    return Settings(_env_file=None, environment="test")
+    return Settings(_env_file=None, environment="test", database_url=database_url)
 
 
 @pytest.fixture

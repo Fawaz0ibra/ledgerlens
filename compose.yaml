@@ -1,0 +1,51 @@
+# The LedgerLens stack on one machine: the API and its Postgres database, on a private network.
+#
+#     docker compose up -d --build    build the API image, then start both
+#     docker compose ps               the state and health of each
+#     docker compose down             remove the containers; the database volume stays
+#
+# Needs POSTGRES_PASSWORD in .env (see .env.example). Compose reads .env itself to fill in ${...}.
+name: ledgerlens
+
+services:
+  db:
+    image: postgres:18.6-trixie@sha256:3a4264520e121176619f54ff867d12774bc81e95e7b84db58d63bccdb6144b81
+    environment:
+      POSTGRES_USER: ledgerlens
+      POSTGRES_DB: ledgerlens
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env, see .env.example}
+    volumes:
+      # Postgres 18+ images: mount the parent folder. The data goes in 18/docker inside it, so a later
+      # major version can sit next to it during an upgrade.
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      # Over TCP, the way the API connects. On first start the image runs Postgres briefly on a local
+      # socket only, to create the database; a socket check would call it healthy too early.
+      test: ["CMD", "pg_isready", "--host=127.0.0.1", "--username=ledgerlens", "--dbname=ledgerlens"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    # No `ports:`. Only the API talks to the database, over this stack's network, so nothing is opened
+    # to Windows or your local network.
+
+  api:
+    build: .
+    image: ledgerlens-api:dev
+    environment:
+      LEDGERLENS_ENVIRONMENT: dev
+      # `db` is the service name above: compose's network turns it into the database container's address.
+      LEDGERLENS_DATABASE_URL: postgresql://ledgerlens:${POSTGRES_PASSWORD}@db:5432/ledgerlens
+    ports:
+      - "127.0.0.1:8000:8000"  # this machine only
+    depends_on:
+      db:
+        condition: service_healthy  # wait until the check above passes, not just until the container starts
+    healthcheck:
+      # The image has no curl, so Python asks. urlopen fails on a 503, so "healthy" here means ready.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  db-data:
