@@ -1,0 +1,79 @@
+# CI: on every pull request and every push to main, GitHub runs these checks on fresh machines. A failed
+# step marks the commit with a red cross. The same checks run locally (README, "Checks"):
+#     uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest --cov
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# The token GitHub gives each run can read the repo and nothing else: no pushing, no releases, no settings.
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      # Every action is pinned to a commit hash, with its version in the comment. A tag like v7 can be moved
+      # to other code by whoever controls the action's repo; a hash can't. A repo setting enforces this.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Don't leave the token in .git/config, where any later step, or any package it installs, could read it.
+          persist-credentials: false
+
+      # GitHub keeps uv's download cache between runs, keyed on uv.lock, so packages are fetched once.
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.5" # the same uv as on our machine and in the Dockerfile
+
+      # --locked: stop if uv.lock doesn't match pyproject.toml, instead of quietly updating it.
+      # The Python version comes from .python-version, so CI runs the same Python as our machine.
+      - name: Install
+        run: uv sync --locked
+
+      - name: Lint (ruff)
+        # The github format also marks each finding on its line in the pull request.
+        run: uv run ruff check --output-format=github .
+
+      - name: Format (ruff)
+        run: uv run ruff format --check .
+
+      - name: Types (mypy)
+        run: uv run mypy
+
+      - name: Tests (pytest, 100% coverage)
+        # testcontainers starts Postgres with the runner's own Docker.
+        run: uv run pytest --cov
+
+  image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Builds straight from the commit, so no checkout is needed. The layer cache is kept in GitHub's cache
+      # between runs; mode=max keeps the build stage's layers too, where the dependency install is.
+      # Nothing is pushed anywhere yet (that comes in Module 7): load hands the image to this machine's
+      # Docker for the smoke test.
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          tags: ledgerlens-api:ci
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # An image can build and still not start (lesson 1.4: a Python 3.13 runtime stage built fine, then
+      # failed on "No module named uvicorn"). So start it: live must answer, and the service must not be root.
+      # The database URL points at nothing on purpose; live doesn't need the database.
+      - name: Smoke test
+        run: |
+          docker run --detach --name api --publish 127.0.0.1:8000:8000 \
+            --env LEDGERLENS_DATABASE_URL=postgresql://nobody@127.0.0.1:1/nothing ledgerlens-api:ci
+          curl --silent --fail --retry 20 --retry-delay 1 --retry-all-errors http://127.0.0.1:8000/health/live \
+            || { docker logs api; exit 1; }
+          uid=$(docker exec api id -u)
+          echo "the service runs as user $uid"
+          test "$uid" = 10001
