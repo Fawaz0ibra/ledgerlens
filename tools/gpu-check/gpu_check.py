@@ -18,8 +18,10 @@ def main() -> None:
     dev = torch.device("cuda:0")
     props = torch.cuda.get_device_properties(dev)
     free, total = torch.cuda.mem_get_info(dev)
-    print(f"GPU {props.name} | compute capability {props.major}.{props.minor} | "
-          f"VRAM free {free / 2**30:.1f} of {total / 2**30:.1f} GiB")
+    print(
+        f"GPU {props.name} | compute capability {props.major}.{props.minor} | "
+        f"VRAM free {free / 2**30:.1f} of {total / 2**30:.1f} GiB"
+    )
     print(f"bf16 supported: {torch.cuda.is_bf16_supported()}")
 
     # A real workload: fp16 matrix multiply on the tensor cores.

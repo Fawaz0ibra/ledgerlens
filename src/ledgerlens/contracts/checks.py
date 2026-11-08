@@ -10,7 +10,7 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from ledgerlens.contracts.invoice import Invoice
 
-SAUDI_VAT_RATES = frozenset({Decimal("0.15"), Decimal("0")})
+SAUDI_VAT_RATES = frozenset({Decimal("0.15"), Decimal(0)})
 HALALA = Decimal("0.01")
 # Rounding VAT per line or once on the total can differ by one halala; both are common.
 VAT_TOLERANCE = HALALA
@@ -35,26 +35,43 @@ def check_invoice(invoice: Invoice) -> list[Finding]:
     for n, line in enumerate(invoice.lines, start=1):
         expected = _round(line.quantity * line.unit_price)
         if line.line_total != expected:
-            findings.append(Finding("line_total_mismatch",
-                                    f"Line {n}: {line.quantity} x {line.unit_price} = {expected}, "
-                                    f"but the line total says {line.line_total}."))
+            findings.append(
+                Finding(
+                    "line_total_mismatch",
+                    f"Line {n}: {line.quantity} x {line.unit_price} = {expected}, "
+                    f"but the line total says {line.line_total}.",
+                )
+            )
         if line.vat_rate not in SAUDI_VAT_RATES:
-            findings.append(Finding("unexpected_vat_rate",
-                                    f"Line {n}: VAT rate {line.vat_rate * 100:.2f}% is not a Saudi rate (15% or 0%)."))
+            findings.append(
+                Finding(
+                    "unexpected_vat_rate",
+                    f"Line {n}: VAT rate {line.vat_rate * 100:.2f}% is not a Saudi rate (15% or 0%).",
+                )
+            )
 
-    lines_sum = sum((line.line_total for line in invoice.lines), Decimal("0"))
+    lines_sum = sum((line.line_total for line in invoice.lines), Decimal(0))
     if invoice.subtotal != lines_sum:
-        findings.append(Finding("subtotal_mismatch",
-                                f"The lines add up to {lines_sum}, but the subtotal says {invoice.subtotal}."))
+        findings.append(
+            Finding("subtotal_mismatch", f"The lines add up to {lines_sum}, but the subtotal says {invoice.subtotal}.")
+        )
 
-    expected_vat = _round(sum((line.line_total * line.vat_rate for line in invoice.lines), Decimal("0")))
+    expected_vat = _round(sum((line.line_total * line.vat_rate for line in invoice.lines), Decimal(0)))
     if abs(invoice.vat_total - expected_vat) > VAT_TOLERANCE:
-        findings.append(Finding("vat_total_mismatch",
-                                f"VAT on these lines is {expected_vat}, but the VAT total says {invoice.vat_total}."))
+        findings.append(
+            Finding(
+                "vat_total_mismatch",
+                f"VAT on these lines is {expected_vat}, but the VAT total says {invoice.vat_total}.",
+            )
+        )
 
     if invoice.total != invoice.subtotal + invoice.vat_total:
-        findings.append(Finding("total_mismatch",
-                                f"{invoice.subtotal} + {invoice.vat_total} = {invoice.subtotal + invoice.vat_total}, "
-                                f"but the total says {invoice.total}."))
+        findings.append(
+            Finding(
+                "total_mismatch",
+                f"{invoice.subtotal} + {invoice.vat_total} = {invoice.subtotal + invoice.vat_total}, "
+                f"but the total says {invoice.total}.",
+            )
+        )
 
     return findings

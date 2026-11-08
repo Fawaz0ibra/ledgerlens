@@ -9,13 +9,17 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 from testcontainers.community.postgres import PostgresContainer
 
 from ledgerlens.api.app import create_app
 from ledgerlens.api.settings import Settings
 
-# The synthetic invoice the demo scripts use: right shape, right numbers.
-_SAMPLE = json.loads((Path(__file__).parents[1] / "scripts" / "sample_invoice.json").read_text(encoding="utf-8"))
+# The synthetic invoice the demo scripts use: right shape, right numbers. json.loads can return anything,
+# so the hint says what this file holds; without it, every copy below would be unchecked (Any).
+_SAMPLE: dict[str, Any] = json.loads(
+    (Path(__file__).parents[1] / "scripts" / "sample_invoice.json").read_text(encoding="utf-8")
+)
 
 # The same Postgres image as compose.yaml. Change both together.
 POSTGRES_IMAGE = "postgres:18.6-trixie@sha256:3a4264520e121176619f54ff867d12774bc81e95e7b84db58d63bccdb6144b81"
@@ -35,7 +39,7 @@ def invoice_with() -> Callable[[dict[str, Any]], dict[str, Any]]:
         data = copy.deepcopy(_SAMPLE)
         for path, value in changes.items():
             *parents, last = (int(key) if key.isdigit() else key for key in path.split("."))
-            target = data
+            target: Any = data  # steps through both dicts and lists, so no single type fits
             for key in parents:
                 target = target[key]
             target[last] = value
@@ -52,8 +56,9 @@ def database_url() -> Iterator[str]:
     """
     postgres = PostgresContainer(POSTGRES_IMAGE, password=secrets.token_hex(16), driver=None)
     # A random free port on 127.0.0.1, not on every network interface. testcontainers has no option for
-    # this, so we set Docker's own form of the binding (address, no port) directly.
-    postgres.ports["5432"] = ("127.0.0.1",)
+    # this, so we set Docker's own form of the binding (address, no port) directly. testcontainers' type
+    # hint allows only a port number here, so mypy is told to accept this one line.
+    postgres.ports["5432"] = ("127.0.0.1",)  # type: ignore[assignment]
     with postgres:
         yield postgres.get_connection_url()
 
@@ -61,7 +66,7 @@ def database_url() -> Iterator[str]:
 @pytest.fixture
 def settings(database_url: str) -> Settings:
     # _env_file=None: a .env file on the developer's machine can't change what the tests see.
-    return Settings(_env_file=None, environment="test", database_url=database_url)
+    return Settings(_env_file=None, environment="test", database_url=SecretStr(database_url))
 
 
 @pytest.fixture

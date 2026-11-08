@@ -1,6 +1,6 @@
 """The LedgerLens API. Run from the repo root:
 
-    uv run uvicorn ledgerlens.api.app:create_app --factory
+uv run uvicorn ledgerlens.api.app:create_app --factory
 """
 
 import json
@@ -8,7 +8,7 @@ import logging
 import re
 import time
 import uuid
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Coroutine
 from contextlib import asynccontextmanager
 from decimal import Decimal
 from importlib.metadata import version
@@ -38,7 +38,7 @@ class _ExactJSONRequest(Request):
 
 
 class _ExactJSONRoute(APIRoute):
-    def get_route_handler(self) -> Callable[[Request], Awaitable[Response]]:
+    def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
         handler = super().get_route_handler()
 
         async def exact_json_handler(request: Request) -> Response:
@@ -118,10 +118,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             log.exception("unhandled error")
             response = errors.problem(500, "Something went wrong on our side. Quote the request_id if you report it.")
         response.headers["X-Request-ID"] = rid
-        log.info("request", extra={"fields": {
-            "method": request.method, "path": request.url.path, "status": response.status_code,
-            "duration_ms": round((time.perf_counter() - started) * 1000, 2),
-        }})
+        log.info(
+            "request",
+            extra={
+                "fields": {
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status": response.status_code,
+                    "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+                }
+            },
+        )
         logs.request_id.reset(token)
         return response
 

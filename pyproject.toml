@@ -39,10 +39,31 @@ show_missing = true
 # with a reason, so the exception is visible in review.
 fail_under = 100
 
+[tool.ruff]
+# Our code is written to about 120 columns. The formatter wraps code at this width; it leaves comments alone.
+# No rule list: we use ruff's own default rules as they are.
+line-length = 120
+
+[tool.mypy]
+# tools/ is left out: its scripts need PyTorch, which isn't in this environment.
+files = ["src", "tests", "scripts"]
+# Every function needs type hints, and mypy checks inside every function. Without strict, mypy doesn't
+# look inside a function that has no hints at all.
+strict = true
+# Teaches mypy how Pydantic models are built, so Model(...) calls are checked too.
+plugins = ["pydantic.mypy"]
+
+[tool.pydantic-mypy]
+# Model(...) is checked against the real field types, and an unknown field name is an error.
+init_typed = true
+init_forbid_extra = true
+
 [dependency-groups]
 dev = [
     "httpx2==2.16.0",
+    "mypy==2.4.1",
     "pytest==9.2.0",
     "pytest-cov==7.1.0",
+    "ruff==0.17.3",
     "testcontainers==4.15.0",
 ]
