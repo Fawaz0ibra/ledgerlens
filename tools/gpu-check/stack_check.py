@@ -14,8 +14,7 @@ QDRANT = "http://qdrant:6333"  # the service name from compose.yaml; Compose's D
 
 def call(method: str, path: str, body: dict | None = None) -> dict:
     data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(QDRANT + path, data=data, method=method,
-                                 headers={"Content-Type": "application/json"})
+    req = urllib.request.Request(QDRANT + path, data=data, method=method, headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=10) as resp:
         return json.load(resp)
 
