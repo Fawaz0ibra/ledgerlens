@@ -10,7 +10,8 @@ looks the same on every machine and in CI.
 
 - **Source:** [google/fonts](https://github.com/google/fonts/tree/5bb28733cec313b63fbd415b574b5ae35c8aa8b8/ofl/ibmplexsansarabic),
   commit `5bb28733cec313b63fbd415b574b5ae35c8aa8b8` (2026-11-08).
-- **Licence:** SIL Open Font License 1.1, in [OFL.txt](OFL.txt) (line endings converted to LF, text unchanged).
+- **Licence:** SIL Open Font License 1.1, in [OFL.txt](OFL.txt). Our hooks converted its line endings to
+  LF and removed spaces at the ends of lines; the wording is unchanged.
   The licence allows bundling and redistributing the fonts with software; "Plex" is a Reserved Font Name,
   so a modified version couldn't use it.
 - **Coverage, checked with fontTools:** Latin letters and digits, Arabic letters, Arabic-Indic digits
