@@ -20,6 +20,7 @@ invoice images yet.
 | `src/ledgerlens/contracts/` | The invoice contract (Pydantic models) and its arithmetic and tax checks |
 | `src/ledgerlens/api/` | The HTTP service: settings, JSON logs, health checks, error responses, the invoice check |
 | `tests/` | pytest tests for the contract, the checks and the API; shared fixtures are in `conftest.py` |
+| `datagen/` | The synthetic invoice generator, a separate package in the same uv workspace: `uv run ledgerlens-datagen --seed 7` |
 | `Dockerfile`, `.dockerignore` | The API image, built in two stages ([ADR 0004](docs/adr/0004-container-image-two-stages-on-slim.md)) |
 | `compose.yaml` | The API and its Postgres database on one machine |
 | `.github/workflows/ci.yml` | CI: lint, format, types and tests, then the image build and a smoke test |

@@ -1,0 +1,24 @@
+[project]
+name = "ledgerlens-datagen"
+version = "0.1.0"
+description = "Seeded synthetic bilingual Arabic/English ZATCA-style invoices with ground-truth labels, for testing LedgerLens."
+license = "Apache-2.0"
+authors = [
+    { name = "Fawaz Ibra", email = "129978738+Fawaz0ibra@users.noreply.github.com" }
+]
+requires-python = "==3.12.*"
+dependencies = [
+    # The invoice contract. Every generated invoice is a ledgerlens.contracts Invoice, so the generator
+    # can't drift from what the API accepts.
+    "ledgerlens",
+]
+
+[project.scripts]
+ledgerlens-datagen = "ledgerlens_datagen.cli:main"
+
+[tool.uv.sources]
+ledgerlens = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.13.5,<0.14.0"]
+build-backend = "uv_build"
