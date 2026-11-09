@@ -8,3 +8,4 @@
 *.jpeg binary
 *.pdf binary
 *.parquet binary
+*.ttf binary

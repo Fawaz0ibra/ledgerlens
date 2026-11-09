@@ -66,7 +66,7 @@ def generate_invoice(world: World, seed: int, index: int) -> SyntheticInvoice:
         most_lines = MAX_SIMPLIFIED_LINES
     lines = tuple(_line(rng, item) for item in rng.sample(catalogue, rng.randint(1, most_lines)))
     subtotal = sum((line.line_total for line in lines), Decimal(0))
-    vat_total = _round(subtotal * VAT_RATE)
+    vat_total = round_to_halala(subtotal * VAT_RATE)
 
     day = FIRST_DAY + timedelta(days=rng.randint(0, (LAST_DAY - FIRST_DAY).days))
     issued_at = datetime.combine(day, time(rng.randint(8, 21), rng.randint(0, 59), rng.randint(0, 59)), RIYADH)
@@ -117,7 +117,7 @@ def _line(rng: random.Random, item: Item) -> LineItem:
         quantity=quantity,
         unit_price=unit_price,
         vat_rate=VAT_RATE,
-        line_total=_round(quantity * unit_price),
+        line_total=round_to_halala(quantity * unit_price),
     )
 
 
@@ -148,6 +148,6 @@ def _price(rng: random.Random, item: Item) -> Decimal:
     return Decimal(f"{riyals}.{halalas:02d}")
 
 
-def _round(amount: Decimal) -> Decimal:
-    # The same rounding check_invoice uses: to the halala, halves up.
+def round_to_halala(amount: Decimal) -> Decimal:
+    """The same rounding check_invoice uses: to the halala, halves up."""
     return amount.quantize(HALALA, rounding=ROUND_HALF_UP)

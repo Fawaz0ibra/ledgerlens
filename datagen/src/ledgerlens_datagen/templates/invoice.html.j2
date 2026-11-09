@@ -1,0 +1,166 @@
+<!doctype html>
+{#- One A4 page, right to left. Every value a model should learn to read carries data-field: the path of
+    that value in the ground-truth JSON. English text sits in lang="en" dir="ltr" elements, so the browser
+    lays it out left to right inside the Arabic page. -#}
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>{{ invoice.invoice_number }}</title>
+<style>
+{{ font_css }}
+@page { size: 210mm 297mm; margin: 0; }
+* { box-sizing: border-box; }
+/* overflow on html too: otherwise the browser applies body's overflow to the whole window, anything wider
+   than the page (the watermark) widens it, and in a right-to-left page that shifts everything sideways. */
+html, body { margin: 0; padding: 0; background: #fff; overflow: hidden; }
+body {
+  width: 210mm; height: 297mm; overflow: hidden; position: relative;
+  font-family: "Plex Arabic"; font-size: 9pt; line-height: 1.35; color: #1b1b1b;
+}
+.page { position: absolute; top: 0; right: 0; bottom: 0; left: 0; padding: 10mm 13mm; }
+.marker { background: #a3001b; color: #fff; text-align: center; font-weight: 700; font-size: 8.5pt; padding: 1.5mm 2mm; }
+.marker.bottom { position: absolute; left: 13mm; right: 13mm; bottom: 10mm; }
+.watermark {
+  position: absolute; top: 135mm; left: 0; right: 0; text-align: center; transform: rotate(-30deg);
+  font-size: 30pt; font-weight: 700; color: rgba(163, 0, 27, 0.08); white-space: nowrap;
+}
+header { display: flex; justify-content: space-between; align-items: flex-start; margin: 6mm 0 5mm; }
+.seller { width: 80mm; }
+.seller .name-ar { font-size: 14pt; font-weight: 700; }
+.seller .name-en { font-size: 10.5pt; font-weight: 700; margin-bottom: 1mm; }
+.title { text-align: center; padding-top: 3mm; }
+.title .ar { font-size: 17pt; font-weight: 700; }
+.title .en { font-size: 11pt; }
+.qr img { width: 30mm; height: 30mm; display: block; }
+table { width: 100%; border-collapse: collapse; }
+.kv { margin-bottom: 4mm; }
+.kv td { padding: 0.8mm 1.5mm; border-bottom: 0.2mm solid #d5d9de; }
+.kv .label-ar { text-align: right; width: 36%; }
+.kv .value { text-align: center; font-weight: 700; }
+.kv .label-en { text-align: left; width: 36%; }
+.party { display: flex; justify-content: space-between; border: 0.3mm solid #9aa3ad; padding: 2mm 3mm; margin-bottom: 4mm; }
+.party .side { width: 48%; }
+.party .heading { font-weight: 700; font-size: 10pt; margin-bottom: 1mm; }
+.lines th, .lines td { border: 0.25mm solid #9aa3ad; padding: 1.2mm 1.5mm; vertical-align: top; }
+.lines th { background: #e9edf1; font-size: 7.5pt; font-weight: 700; text-align: center; }
+.lines td.num { text-align: center; white-space: nowrap; }
+.lines .description-en { font-size: 8pt; color: #444; }
+.totals { width: 64%; margin-top: 4mm; margin-right: auto; }
+.totals td { border: 0.25mm solid #9aa3ad; padding: 1.2mm 2mm; }
+.totals .value { text-align: center; white-space: nowrap; font-weight: 700; }
+.totals .label-en { text-align: left; }
+.totals .grand td { background: #e9edf1; font-weight: 700; }
+.note { margin-top: 3mm; font-size: 8pt; color: #444; }
+</style>
+</head>
+<body>
+<div class="watermark">عينة اصطناعية · <span lang="en" dir="ltr">SYNTHETIC SAMPLE</span></div>
+<div class="page">
+  <div class="marker">{{ marker_ar }} · <span lang="en" dir="ltr">{{ marker_en }}</span></div>
+
+  <header>
+    <div class="seller">
+      <div class="name-ar" data-field="invoice.seller.name_ar">{{ seller.name_ar }}</div>
+      <div class="name-en" lang="en" dir="ltr" data-field="invoice.seller.name_en">{{ seller.name_en }}</div>
+      <div data-field="seller_address" data-lang="ar">{{ address_ar(s.seller_address) }}</div>
+      <div lang="en" dir="ltr" data-field="seller_address" data-lang="en">{{ address_en(s.seller_address) }}</div>
+      <div>الرقم الضريبي · <span lang="en" dir="ltr">VAT No.</span> <span data-field="invoice.seller.vat_number">{{ seller.vat_number }}</span></div>
+    </div>
+    <div class="title">
+      <div class="ar">{{ "فاتورة ضريبية" if standard else "فاتورة ضريبية مبسطة" }}</div>
+      <div class="en" lang="en" dir="ltr">{{ "Tax Invoice" if standard else "Simplified Tax Invoice" }}</div>
+    </div>
+    <div class="qr"><img src="{{ qr_image }}" alt="QR" data-field="qr_code"></div>
+  </header>
+
+  <table class="kv">
+    <tr>
+      <td class="label-ar">رقم الفاتورة</td>
+      <td class="value"><span data-field="invoice.invoice_number">{{ invoice.invoice_number }}</span></td>
+      <td class="label-en" lang="en" dir="ltr">Invoice number</td>
+    </tr>
+    <tr>
+      <td class="label-ar">تاريخ الإصدار</td>
+      <td class="value"><span data-field="invoice.issue_date">{{ invoice.issue_date | day_month_year }}</span></td>
+      <td class="label-en" lang="en" dir="ltr">Issue date</td>
+    </tr>
+    <tr>
+      <td class="label-ar">وقت الإصدار</td>
+      <td class="value"><span data-field="issued_at">{{ s.issued_at | clock }}</span></td>
+      <td class="label-en" lang="en" dir="ltr">Issue time</td>
+    </tr>
+  </table>
+
+  {% if buyer is not none %}
+  <div class="party">
+    <div class="side">
+      <div class="heading">المشتري</div>
+      <div data-field="invoice.buyer.name_ar">{{ buyer.name_ar }}</div>
+      <div data-field="buyer_address" data-lang="ar">{{ address_ar(s.buyer_address) }}</div>
+      <div>الرقم الضريبي <span data-field="invoice.buyer.vat_number">{{ buyer.vat_number }}</span></div>
+    </div>
+    <div class="side" lang="en" dir="ltr">
+      <div class="heading">Buyer</div>
+      <div data-field="invoice.buyer.name_en">{{ buyer.name_en }}</div>
+      <div data-field="buyer_address" data-lang="en">{{ address_en(s.buyer_address) }}</div>
+      <div>VAT No. {{ buyer.vat_number }}</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>الوصف<br><span lang="en" dir="ltr">Description</span></th>
+        <th>الكمية<br><span lang="en" dir="ltr">Quantity</span></th>
+        <th>سعر الوحدة<br><span lang="en" dir="ltr">Unit price</span></th>
+        <th>المبلغ غير شامل الضريبة<br><span lang="en" dir="ltr">Amount excl. VAT</span></th>
+        <th>نسبة الضريبة<br><span lang="en" dir="ltr">VAT rate</span></th>
+        <th>مبلغ الضريبة<br><span lang="en" dir="ltr">VAT amount</span></th>
+        <th>المبلغ شامل الضريبة<br><span lang="en" dir="ltr">Amount incl. VAT</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line, line_vat in rows %}
+      {% set n = loop.index0 %}
+      <tr>
+        <td class="num">{{ loop.index }}</td>
+        <td>
+          <div data-field="invoice.lines.{{ n }}.description_ar">{{ line.description_ar }}</div>
+          <div class="description-en" lang="en" dir="ltr" data-field="invoice.lines.{{ n }}.description_en">{{ line.description_en }}</div>
+        </td>
+        <td class="num"><span data-field="invoice.lines.{{ n }}.quantity">{{ line.quantity | quantity }}</span></td>
+        <td class="num"><span data-field="invoice.lines.{{ n }}.unit_price">{{ line.unit_price | money }}</span></td>
+        <td class="num"><span data-field="invoice.lines.{{ n }}.line_total">{{ line.line_total | money }}</span></td>
+        <td class="num"><span data-field="invoice.lines.{{ n }}.vat_rate">{{ line.vat_rate | percent }}</span></td>
+        <td class="num">{{ line_vat | money }}</td>
+        <td class="num">{{ (line.line_total + line_vat) | money }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <table class="totals">
+    <tr>
+      <td>الإجمالي غير شامل ضريبة القيمة المضافة</td>
+      <td class="value"><span data-field="invoice.subtotal">{{ invoice.subtotal | money }}</span></td>
+      <td class="label-en" lang="en" dir="ltr">Total excl. VAT</td>
+    </tr>
+    <tr>
+      <td>مجموع ضريبة القيمة المضافة</td>
+      <td class="value"><span data-field="invoice.vat_total">{{ invoice.vat_total | money }}</span></td>
+      <td class="label-en" lang="en" dir="ltr">Total VAT</td>
+    </tr>
+    <tr class="grand">
+      <td>الإجمالي شامل ضريبة القيمة المضافة</td>
+      <td class="value"><span data-field="invoice.total">{{ invoice.total | money }}</span></td>
+      <td class="label-en" lang="en" dir="ltr">Total incl. VAT</td>
+    </tr>
+  </table>
+  <div class="note">جميع المبالغ بالريال السعودي (ر.س) · <span lang="en" dir="ltr">All amounts in Saudi riyals (SAR)</span></div>
+
+  <div class="marker bottom">{{ marker_ar }} · <span lang="en" dir="ltr">{{ marker_en }}</span></div>
+</div>
+</body>
+</html>

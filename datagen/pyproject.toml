@@ -11,6 +11,12 @@ dependencies = [
     # The invoice contract. Every generated invoice is a ledgerlens.contracts Invoice, so the generator
     # can't drift from what the API accepts.
     "ledgerlens",
+    # Rendering (ADR 0006): the HTML template, the QR image, and headless Chromium for the PDF and PNG.
+    # Playwright also needs its browser: uv run playwright install chromium.
+    "jinja2==3.1.6",
+    "markupsafe==3.0.4",
+    "playwright==1.64.1",
+    "segno==1.6.6",
 ]
 
 [project.scripts]
