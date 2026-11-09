@@ -1,6 +1,6 @@
 # 0003. Serve the API with FastAPI on Uvicorn, from one package
 
-- **Status:** Accepted
+- **Status:** Accepted. The one-package part is superseded by [0005](0005-uv-workspace-one-package-per-component.md).
 - **Date:** 2026-10-31
 
 ## Context
