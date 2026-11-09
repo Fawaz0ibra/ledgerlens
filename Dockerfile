@@ -23,15 +23,19 @@ ENV UV_LINK_MODE=copy \
 WORKDIR /app
 
 # Third-party dependencies first: no dev tools (--no-dev) and not our own package yet
-# (--no-install-project). This layer is rebuilt only when pyproject.toml or uv.lock change.
+# (--no-install-project). This layer is rebuilt only when a pyproject.toml or uv.lock changes.
+# --locked checks uv.lock against every workspace member, so the generator's pyproject.toml is mounted
+# too (ADR 0005). Its code isn't: --no-dev leaves the generator out of the image.
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    --mount=type=bind,source=datagen/pyproject.toml,target=datagen/pyproject.toml \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     uv sync --locked --no-dev --no-install-project
 
 # Then our package. --no-editable installs a copy into the environment instead of a link back to src/,
 # so the environment works on its own once it leaves this stage.
 COPY pyproject.toml uv.lock README.md ./
+COPY datagen/pyproject.toml ./datagen/
 COPY src ./src
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev --no-editable
