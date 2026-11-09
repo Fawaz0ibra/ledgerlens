@@ -2,6 +2,12 @@ version = 1
 revision = 5
 requires-python = "==3.12.*"
 
+[manifest]
+members = [
+    "ledgerlens",
+    "ledgerlens-datagen",
+]
+
 [[package]]
 name = "annotated-doc"
 version = "0.0.5"
@@ -303,6 +309,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "httpx2" },
+    { name = "ledgerlens-datagen" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -323,12 +330,24 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "httpx2", specifier = "==2.16.0" },
+    { name = "ledgerlens-datagen", editable = "datagen" },
     { name = "mypy", specifier = "==2.4.1" },
     { name = "pytest", specifier = "==9.2.0" },
     { name = "pytest-cov", specifier = "==7.1.0" },
     { name = "ruff", specifier = "==0.17.3" },
     { name = "testcontainers", specifier = "==4.15.0" },
 ]
+
+[[package]]
+name = "ledgerlens-datagen"
+version = "0.1.0"
+source = { editable = "datagen" }
+dependencies = [
+    { name = "ledgerlens" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "ledgerlens", editable = "." }]
 
 [[package]]
 name = "librt"

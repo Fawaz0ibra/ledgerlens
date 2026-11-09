@@ -21,15 +21,23 @@ dependencies = [
 requires = ["uv_build>=0.13.5,<0.14.0"]
 build-backend = "uv_build"
 
+# A uv workspace: this package (the API) and the invoice generator in datagen/ are separate packages with
+# their own dependencies, resolved together into the one uv.lock (ADR 0005).
+[tool.uv.workspace]
+members = ["datagen"]
+
+[tool.uv.sources]
+ledgerlens-datagen = { workspace = true }
+
 [tool.pytest]
-testpaths = ["tests"]
+testpaths = ["tests", "datagen/tests"]
 # -ra: after the run, list every test that didn't pass, with the reason.
 addopts = ["-ra"]
 # Every warning fails the run. A deprecation shows up the day it appears, not the day the feature is removed.
 filterwarnings = ["error"]
 
 [tool.coverage.run]
-source = ["ledgerlens"]
+source = ["ledgerlens", "ledgerlens_datagen"]
 # Count both outcomes of every if, not just whether the line ran.
 branch = true
 
@@ -43,10 +51,12 @@ fail_under = 100
 # Our code is written to about 120 columns. The formatter wraps code at this width; it leaves comments alone.
 # No rule list: we use ruff's own default rules as they are.
 line-length = 120
+# Where our own packages live, so ruff sorts their imports as ours, after third-party ones.
+src = ["src", "datagen/src"]
 
 [tool.mypy]
 # tools/ is left out: its scripts need PyTorch, which isn't in this environment.
-files = ["src", "tests", "scripts"]
+files = ["src", "tests", "scripts", "datagen/src", "datagen/tests"]
 # Every function needs type hints, and mypy checks inside every function. Without strict, mypy doesn't
 # look inside a function that has no hints at all.
 strict = true
@@ -59,8 +69,11 @@ init_typed = true
 init_forbid_extra = true
 
 [dependency-groups]
+# The development environment holds every workspace package, so one `uv sync` gives tests and type checks
+# all the code. The API image installs with --no-dev, so it never gets the generator.
 dev = [
     "httpx2==2.16.0",
+    "ledgerlens-datagen",
     "mypy==2.4.1",
     "pytest==9.2.0",
     "pytest-cov==7.1.0",
