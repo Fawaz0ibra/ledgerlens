@@ -5,5 +5,8 @@
 !uv.lock
 !README.md
 !src
+# Only the generator's pyproject.toml, not its code: uv can't check uv.lock without every workspace member's
+# pyproject.toml, but the API image never installs the generator.
+!datagen/pyproject.toml
 **/__pycache__
 **/*.py[cod]
