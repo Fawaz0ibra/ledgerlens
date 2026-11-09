@@ -44,6 +44,12 @@ jobs:
       - name: Types (mypy)
         run: uv run mypy
 
+      # uv sync installed Playwright's Python package, not the browser or the Linux libraries the browser
+      # loads. --with-deps installs those with apt (the runner allows sudo). --only-shell skips the full
+      # Chromium: the invoice renderer only runs headless.
+      - name: Browser for the invoice renderer
+        run: uv run playwright install --with-deps --only-shell chromium
+
       - name: Tests (pytest, 100% coverage)
         # testcontainers starts Postgres with the runner's own Docker.
         run: uv run pytest --cov

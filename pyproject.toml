@@ -40,6 +40,9 @@ filterwarnings = ["error"]
 source = ["ledgerlens", "ledgerlens_datagen"]
 # Count both outcomes of every if, not just whether the line ran.
 branch = true
+# Playwright's synchronous API runs our code inside greenlets (lightweight threads); without this,
+# coverage doesn't see the lines that run there.
+concurrency = ["thread", "greenlet"]
 
 [tool.coverage.report]
 show_missing = true
@@ -63,6 +66,15 @@ strict = true
 # Teaches mypy how Pydantic models are built, so Model(...) calls are checked too.
 plugins = ["pydantic.mypy"]
 
+# pypdfium2 has type hints but doesn't mark itself as typed (no py.typed file), so mypy would skip it and
+# treat everything from it as Any. The override tells mypy to read its hints anyway; a few of its functions
+# have none, and untyped_calls_exclude lets strict mode call those.
+untyped_calls_exclude = ["pypdfium2"]
+
+[[tool.mypy.overrides]]
+module = ["pypdfium2", "pypdfium2.*"]
+follow_untyped_imports = true
+
 [tool.pydantic-mypy]
 # Model(...) is checked against the real field types, and an unknown field name is an error.
 init_typed = true
@@ -75,6 +87,7 @@ dev = [
     "httpx2==2.16.0",
     "ledgerlens-datagen",
     "mypy==2.4.1",
+    "pypdfium2==5.14.0",  # reads the generator's PDFs in tests
     "pytest==9.2.0",
     "pytest-cov==7.1.0",
     "ruff==0.17.3",

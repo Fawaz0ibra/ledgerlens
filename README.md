@@ -30,6 +30,7 @@ invoice images yet.
 | `docs/adr/` | Decision records: what we chose, what we rejected, and the numbers behind it |
 | `data/README.md` | The data policy and the register of datasets we use |
 | `tools/gpu-check/` | Checks that PyTorch can use the GPU, on the host and inside Docker |
+| `tools/render-compare/` | The measurement behind ADR 0006: two renderers drawing the same invoice pages |
 
 ## Working on the repo
 
@@ -55,6 +56,18 @@ Interactive docs are at http://127.0.0.1:8000/docs. Settings come from `LEDGERLE
 variables or the `.env` file; [.env.example](.env.example) lists them. To run the service outside
 compose (`uv run uvicorn ledgerlens.api.app:create_app --factory`), set `LEDGERLENS_DATABASE_URL`.
 
+## Synthetic invoices
+
+The generator in `datagen/` makes seeded bilingual Arabic/English invoices in the style ZATCA (the Saudi tax
+authority) requires, with a visible synthetic-sample marker and test-only VAT numbers. It draws the pages
+with headless Chromium, which needs a one-time setup:
+
+```bash
+uv run playwright install --with-deps --only-shell chromium     # the browser and the Linux libraries it loads (asks for sudo)
+uv run ledgerlens-datagen --seed 7 --count 3                    # JSON, one invoice per line
+uv run ledgerlens-datagen --seed 7 --count 3 --out data/samples # JSON, PDF and PNG per invoice (data/ is git-ignored)
+```
+
 ## Checks
 
 CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs these four on every pull request and every
@@ -68,7 +81,7 @@ uv run pytest --cov    # every test, failing unless every line and branch ran
 ```
 
 Docker must be running: the API tests start a throwaway Postgres in a container (testcontainers) and
-remove it at the end. Any warning fails the test run (`filterwarnings = ["error"]` in `pyproject.toml`),
+remove it at the end. The generator's tests draw real pages, so they need the browser setup above. Any warning fails the test run (`filterwarnings = ["error"]` in `pyproject.toml`),
 so a deprecation is dealt with when it first appears.
 
 ## Data
