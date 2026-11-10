@@ -52,7 +52,16 @@ def test_every_amount_is_written_to_the_halala() -> None:
         invoice = s.invoice
         amounts = [invoice.subtotal, invoice.vat_total, invoice.total]
         amounts += [amount for line in invoice.lines for amount in (line.unit_price, line.line_total)]
+        amounts += [amount for vat in s.line_vat for amount in (vat.vat_amount, vat.amount_with_vat)]
         assert all(amount.as_tuple().exponent == -2 for amount in amounts), invoice.invoice_number
+
+
+def test_each_line_has_its_own_vat_to_the_nearest_halala() -> None:
+    for s in INVOICES:
+        assert len(s.line_vat) == len(s.invoice.lines)
+        for line, vat in zip(s.invoice.lines, s.line_vat, strict=True):
+            assert abs(vat.vat_amount - line.line_total * Decimal("0.15")) <= Decimal("0.005")
+            assert vat.amount_with_vat == line.line_total + vat.vat_amount
 
 
 def test_no_vat_number_outside_the_test_scheme_appears_anywhere() -> None:

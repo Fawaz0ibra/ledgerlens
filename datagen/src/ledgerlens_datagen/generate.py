@@ -32,6 +32,15 @@ FIRST_DAY = date(2026, 1, 1)
 LAST_DAY = date(2026, 10, 31)
 
 
+class LineVat(BaseModel):
+    """What the page prints for a line beyond the contract's line item: its VAT, and its amount with VAT."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    vat_amount: Decimal  # rounded per line
+    amount_with_vat: Decimal
+
+
 class SyntheticInvoice(BaseModel):
     """One synthetic invoice: the contract invoice, plus what the page shows that the contract doesn't hold."""
 
@@ -44,6 +53,9 @@ class SyntheticInvoice(BaseModel):
     seller_address: Address
     buyer_address: Address | None
     qr_code: str  # the Base64 text the QR code holds
+    # One per invoice line. ZATCA asks for VAT per line on a tax invoice; the contract holds VAT only as a
+    # total, rounded once over the subtotal, so the lines' VAT can differ from it by a halala or two.
+    line_vat: tuple[LineVat, ...]
 
 
 def generate(seed: int, count: int) -> Iterator[SyntheticInvoice]:
@@ -101,7 +113,13 @@ def generate_invoice(world: World, seed: int, index: int) -> SyntheticInvoice:
         seller_address=seller.address,
         buyer_address=None if buyer is None else buyer.address,
         qr_code=qr_code,
+        line_vat=tuple(_line_vat(line) for line in lines),
     )
+
+
+def _line_vat(line: LineItem) -> LineVat:
+    vat_amount = round_to_halala(line.line_total * line.vat_rate)
+    return LineVat(vat_amount=vat_amount, amount_with_vat=line.line_total + vat_amount)
 
 
 def _party(company: Company) -> Party:

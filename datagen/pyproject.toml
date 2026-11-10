@@ -1,6 +1,8 @@
 [project]
 name = "ledgerlens-datagen"
-version = "0.1.0"
+# Raised whenever the same seed would give different files. Each dataset records the version that made it
+# (dataset.json), so two datasets with the same seed and version are the same data. 0.2.0: field boxes.
+version = "0.2.0"
 description = "Seeded synthetic bilingual Arabic/English ZATCA-style invoices with ground-truth labels, for testing LedgerLens."
 license = "Apache-2.0"
 authors = [
@@ -12,7 +14,7 @@ dependencies = [
     # can't drift from what the API accepts.
     "ledgerlens",
     # Rendering (ADR 0006): the HTML template, the QR image, and headless Chromium for the PDF and PNG.
-    # Playwright also needs its browser: uv run playwright install chromium.
+    # Playwright also needs its browser, installed separately (README, "Synthetic invoices").
     "jinja2==3.1.6",
     "markupsafe==3.0.4",
     "playwright==1.64.1",

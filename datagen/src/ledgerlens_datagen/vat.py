@@ -1,9 +1,10 @@
-"""VAT numbers for synthetic invoices, from a test-only range: never a number a real taxpayer could hold.
+"""VAT numbers for synthetic invoices, in the pattern of ZATCA's own test numbers.
 
 ZATCA's own SDK (R3.4.8) uses 399999999900003 for its sample seller and 399999999910003 for its sample
 VAT group. We extend that pattern: 3999999999, then a 4-digit serial, then 3. That is 15 digits starting
 and ending with 3 (ZATCA rule BR-KSA-40), so it passes the same format check as a real number, and the
 run of nine 9s after the first 3 marks it as a test number. Serials 0000 and 1000 are ZATCA's two numbers.
+We found no ZATCA statement that reserves the whole range for tests; the dataset card says so.
 """
 
 import re

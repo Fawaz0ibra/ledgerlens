@@ -1,10 +1,9 @@
 """Drawing invoices: one A4 page with the marker, in the bundled fonts, and the same pixels every time.
 
-These tests start a real headless Chromium, once for the whole file.
+These tests start a real headless Chromium, once for the whole file (the renderer fixture, conftest.py).
 """
 
 import struct
-from collections.abc import Iterator
 
 import pypdfium2 as pdfium
 import pytest
@@ -12,18 +11,12 @@ from markupsafe import Markup
 
 from ledgerlens_datagen import render
 from ledgerlens_datagen.generate import SyntheticInvoice, generate
-from ledgerlens_datagen.render import MARKER_AR, MARKER_EN, Renderer, open_renderer, render_html
+from ledgerlens_datagen.render import MARKER_AR, MARKER_EN, Renderer, render_html
 
 SEED = 20261109
 _SAMPLE = list(generate(SEED, 20))
 STANDARD = next(s for s in _SAMPLE if s.invoice.invoice_type == "standard")
 SIMPLIFIED = next(s for s in _SAMPLE if s.invoice.invoice_type == "simplified")
-
-
-@pytest.fixture(scope="module")
-def renderer() -> Iterator[Renderer]:
-    with open_renderer() as renderer:
-        yield renderer
 
 
 def _pdf_text_and_size(pdf: bytes) -> tuple[int, str, tuple[float, float]]:

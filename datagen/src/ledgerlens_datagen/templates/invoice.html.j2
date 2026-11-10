@@ -1,7 +1,9 @@
 <!doctype html>
-{#- One A4 page, right to left. Every value a model should learn to read carries data-field: the path of
-    that value in the ground-truth JSON. English text sits in lang="en" dir="ltr" elements, so the browser
-    lays it out left to right inside the Arabic page. -#}
+{#- One A4 page, right to left. Every value printed from the ground-truth JSON carries data-field, its
+    path in that JSON, and the renderer records the box around it. A value printed in both languages also
+    carries data-lang, so its two copies stay apart. The template's own text (headings, labels, row
+    numbers, the marker) isn't a value from the invoice and has none. English text sits in lang="en"
+    dir="ltr" elements, so the browser lays it out left to right inside the Arabic page. -#}
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
@@ -67,8 +69,8 @@ table { width: 100%; border-collapse: collapse; }
       <div>الرقم الضريبي · <span lang="en" dir="ltr">VAT No.</span> <span data-field="invoice.seller.vat_number">{{ seller.vat_number }}</span></div>
     </div>
     <div class="title">
-      <div class="ar">{{ "فاتورة ضريبية" if standard else "فاتورة ضريبية مبسطة" }}</div>
-      <div class="en" lang="en" dir="ltr">{{ "Tax Invoice" if standard else "Simplified Tax Invoice" }}</div>
+      <div class="ar" data-field="invoice.invoice_type" data-lang="ar">{{ "فاتورة ضريبية" if standard else "فاتورة ضريبية مبسطة" }}</div>
+      <div class="en" lang="en" dir="ltr" data-field="invoice.invoice_type" data-lang="en">{{ "Tax Invoice" if standard else "Simplified Tax Invoice" }}</div>
     </div>
     <div class="qr"><img src="{{ qr_image }}" alt="QR" data-field="qr_code"></div>
   </header>
@@ -97,13 +99,13 @@ table { width: 100%; border-collapse: collapse; }
       <div class="heading">المشتري</div>
       <div data-field="invoice.buyer.name_ar">{{ buyer.name_ar }}</div>
       <div data-field="buyer_address" data-lang="ar">{{ address_ar(s.buyer_address) }}</div>
-      <div>الرقم الضريبي <span data-field="invoice.buyer.vat_number">{{ buyer.vat_number }}</span></div>
+      <div>الرقم الضريبي <span data-field="invoice.buyer.vat_number" data-lang="ar">{{ buyer.vat_number }}</span></div>
     </div>
     <div class="side" lang="en" dir="ltr">
       <div class="heading">Buyer</div>
       <div data-field="invoice.buyer.name_en">{{ buyer.name_en }}</div>
       <div data-field="buyer_address" data-lang="en">{{ address_en(s.buyer_address) }}</div>
-      <div>VAT No. {{ buyer.vat_number }}</div>
+      <div>VAT No. <span data-field="invoice.buyer.vat_number" data-lang="en">{{ buyer.vat_number }}</span></div>
     </div>
   </div>
   {% endif %}
@@ -122,7 +124,7 @@ table { width: 100%; border-collapse: collapse; }
       </tr>
     </thead>
     <tbody>
-      {% for line, line_vat in rows %}
+      {% for line, vat in rows %}
       {% set n = loop.index0 %}
       <tr>
         <td class="num">{{ loop.index }}</td>
@@ -134,8 +136,8 @@ table { width: 100%; border-collapse: collapse; }
         <td class="num"><span data-field="invoice.lines.{{ n }}.unit_price">{{ line.unit_price | money }}</span></td>
         <td class="num"><span data-field="invoice.lines.{{ n }}.line_total">{{ line.line_total | money }}</span></td>
         <td class="num"><span data-field="invoice.lines.{{ n }}.vat_rate">{{ line.vat_rate | percent }}</span></td>
-        <td class="num">{{ line_vat | money }}</td>
-        <td class="num">{{ (line.line_total + line_vat) | money }}</td>
+        <td class="num"><span data-field="line_vat.{{ n }}.vat_amount">{{ vat.vat_amount | money }}</span></td>
+        <td class="num"><span data-field="line_vat.{{ n }}.amount_with_vat">{{ vat.amount_with_vat | money }}</span></td>
       </tr>
       {% endfor %}
     </tbody>
@@ -158,7 +160,7 @@ table { width: 100%; border-collapse: collapse; }
       <td class="label-en" lang="en" dir="ltr">Total incl. VAT</td>
     </tr>
   </table>
-  <div class="note">جميع المبالغ بالريال السعودي (ر.س) · <span lang="en" dir="ltr">All amounts in Saudi riyals (SAR)</span></div>
+  <div class="note">جميع المبالغ بالريال السعودي (<span data-field="invoice.currency" data-lang="ar">ر.س</span>) · <span lang="en" dir="ltr">All amounts in Saudi riyals (<span data-field="invoice.currency" data-lang="en">SAR</span>)</span></div>
 
   <div class="marker bottom">{{ marker_ar }} · <span lang="en" dir="ltr">{{ marker_en }}</span></div>
 </div>
