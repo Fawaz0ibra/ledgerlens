@@ -68,11 +68,19 @@ plugins = ["pydantic.mypy"]
 
 # pypdfium2 has type hints but doesn't mark itself as typed (no py.typed file), so mypy would skip it and
 # treat everything from it as Any. The override tells mypy to read its hints anyway; a few of its functions
-# have none, and untyped_calls_exclude lets strict mode call those.
-untyped_calls_exclude = ["pypdfium2"]
+# have none, and untyped_calls_exclude lets strict mode call those. pypdfium2_raw holds pdfium's own C
+# functions, which pypdfium2.raw passes on.
+untyped_calls_exclude = ["pypdfium2", "pypdfium2_raw"]
+
+# tests/ and datagen/tests/ each hold a conftest.py. Neither folder is a package, so mypy would name both
+# "conftest" and stop. With explicit bases, a module's name is its path below the nearest folder listed
+# here, or else below the repo root: src/ledgerlens/api/app.py is ledgerlens.api.app, and the two
+# conftest.py files are tests.conftest and datagen.tests.conftest.
+mypy_path = ["src", "datagen/src"]
+explicit_package_bases = true
 
 [[tool.mypy.overrides]]
-module = ["pypdfium2", "pypdfium2.*"]
+module = ["pypdfium2", "pypdfium2.*", "pypdfium2_raw", "pypdfium2_raw.*"]
 follow_untyped_imports = true
 
 [tool.pydantic-mypy]

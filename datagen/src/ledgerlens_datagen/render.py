@@ -1,5 +1,5 @@
 """Draw a synthetic invoice as the page a person would see: HTML from a template, then PDF and PNG from
-headless Chromium.
+headless Chromium, and the box around every value on the page.
 
 The page is A4. The browser lays it out at 96 CSS pixels per inch (794 x 1123), the PNG is drawn at twice
 that (1588 x 2246) so small print stays sharp, and the PDF comes from the same layout.
@@ -12,31 +12,57 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
 from functools import cache
+from importlib.metadata import version
 from importlib.resources import files
+from math import ceil, floor
+from typing import Any
 
 import segno
 from jinja2 import Environment, PackageLoader, StrictUndefined
 from markupsafe import Markup
 from playwright.sync_api import Page, sync_playwright
 
-from ledgerlens_datagen.generate import SyntheticInvoice, round_to_halala
+from ledgerlens_datagen.generate import SyntheticInvoice
+from ledgerlens_datagen.layout import FieldBox, Layout
 from ledgerlens_datagen.world import Address
 
 # A4 (210 x 297 mm) at 96 CSS pixels per inch, and the PNG drawn at twice that.
 PAGE_WIDTH_PX = 794
 PAGE_HEIGHT_PX = 1123
 PNG_SCALE = 2
+# A PDF counts in points, 72 to the inch: 72 / 96 of a CSS pixel.
+POINTS_PER_PX = 0.75
 
 # Printed at the top and bottom of every page, with a watermark across the middle, so a page can't pass
 # as a real tax invoice even when cropped.
 MARKER_AR = "عينة اصطناعية لأغراض الاختبار — ليست فاتورة ضريبية"
 MARKER_EN = "SYNTHETIC SAMPLE FOR TESTING — NOT A TAX INVOICE"
 
+# Runs in the page once it is drawn: for every element marked data-field, its text and the box around that
+# text, in CSS pixels. The element's own box won't do, because a <div> is as wide as its column however
+# short its text. A Range over the element's contents measures the text itself. An image has no text, so
+# it keeps its own box.
+_MEASURE = """() => [...document.querySelectorAll("[data-field]")].map(element => {
+  let box = element.getBoundingClientRect();
+  if (element.tagName !== "IMG") {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    box = range.getBoundingClientRect();
+  }
+  return {
+    field: element.dataset.field,
+    lang: element.dataset.lang ?? null,
+    text: element.tagName === "IMG" ? null : element.innerText,
+    box: [box.left, box.top, box.right, box.bottom],
+  };
+})"""
+
 
 @dataclass(frozen=True)
 class RenderedPage:
     pdf: bytes
     png: bytes
+    layout: Layout
 
 
 def _money(amount: Decimal) -> str:
@@ -98,9 +124,7 @@ def _font_css() -> Markup:
 
 def render_html(synthetic: SyntheticInvoice) -> str:
     invoice = synthetic.invoice
-    # The page shows VAT per line, rounded per line; the VAT total is rounded once, over the subtotal.
-    # The two can differ by a halala, as on real invoices.
-    rows = [(line, round_to_halala(line.line_total * line.vat_rate)) for line in invoice.lines]
+    rows = list(zip(invoice.lines, synthetic.line_vat, strict=True))
     return _ENV.get_template("invoice.html.j2").render(
         s=synthetic,
         invoice=invoice,
@@ -115,11 +139,26 @@ def render_html(synthetic: SyntheticInvoice) -> str:
     )
 
 
+def _field_box(measured: dict[str, Any]) -> FieldBox:
+    """One measurement from the browser, in CSS pixels, as a box in PNG pixels and in PDF points."""
+    x0, y0, x1, y1 = measured["box"]
+    s = PNG_SCALE
+    p = POINTS_PER_PX
+    return FieldBox(
+        field=measured["field"],
+        lang=measured["lang"],
+        text=measured["text"],
+        png=(floor(x0 * s), floor(y0 * s), ceil(x1 * s), ceil(y1 * s)),
+        pdf=(round(x0 * p, 2), round(y0 * p, 2), round(x1 * p, 2), round(y1 * p, 2)),
+    )
+
+
 class Renderer:
     """Draws every page in one browser tab that stays open: starting Chromium takes far longer than a page."""
 
-    def __init__(self, page: Page) -> None:
+    def __init__(self, page: Page, engine: str) -> None:
         self._page = page
+        self.engine = engine  # which browser drew the pages, for the dataset's record
 
     def render(self, synthetic: SyntheticInvoice) -> RenderedPage:
         return self.draw(render_html(synthetic))
@@ -135,8 +174,12 @@ class Renderer:
         if failed:
             raise RuntimeError(f"bundled fonts failed to load (weights {failed})")
         png = page.screenshot(type="png")
+        # Measured from the layout the screenshot was just taken of. Printing the PDF lays the page out
+        # again; the tests check that the PDF's text sits in these same boxes.
+        fields = tuple(_field_box(measured) for measured in page.evaluate(_MEASURE))
         pdf = page.pdf(width="210mm", height="297mm", print_background=True, prefer_css_page_size=True)
-        return RenderedPage(pdf=pdf, png=png)
+        layout = Layout(png_size=(PAGE_WIDTH_PX * PNG_SCALE, PAGE_HEIGHT_PX * PNG_SCALE), fields=fields)
+        return RenderedPage(pdf=pdf, png=png, layout=layout)
 
 
 @contextmanager
@@ -148,4 +191,4 @@ def open_renderer() -> Iterator[Renderer]:
         )
         # Make the PDF from the screen layout too, so the PDF and the PNG are one layout.
         page.emulate_media(media="screen")
-        yield Renderer(page)
+        yield Renderer(page, engine=f"Chromium {browser.version} through Playwright {version('playwright')}")

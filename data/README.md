@@ -28,4 +28,4 @@ downloaded by a script or published on Hugging Face, and their exact version is 
 
 | Dataset | Source | Licence | Version or date | Used for | Lesson |
 |---|---|---|---|---|---|
-| *None yet* | | | | | |
+| LedgerLens synthetic invoices ([dataset card](../datagen/DATASET_CARD.md)) | Our generator, `datagen/`; made on demand, not stored | Apache-2.0 (fonts: OFL 1.1) | `ledgerlens-datagen` 0.2.0; each folder's `dataset.json` records version, browser and seed | Tests now; fine-tuning, vision and evals from Module 3 | 1.6 |

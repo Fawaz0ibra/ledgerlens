@@ -10,8 +10,9 @@ data validation → multi-agent review (policy lookup, anomaly checks) → human
 tested against our own synthetic bilingual Arabic/English invoices.
 
 **Status:** the invoice contract and an HTTP API that checks invoices sent as JSON, with tests, shipped
-as a container image and run next to Postgres with docker compose; CI checks every change. Nothing reads
-invoice images yet.
+as a container image and run next to Postgres with docker compose; CI checks every change. A generator
+makes synthetic invoice pages with their ground truth: every value, its text as printed, and its box on
+the page. Nothing reads invoice images yet.
 
 ## Layout
 
@@ -31,6 +32,7 @@ invoice images yet.
 | `data/README.md` | The data policy and the register of datasets we use |
 | `tools/gpu-check/` | Checks that PyTorch can use the GPU, on the host and inside Docker |
 | `tools/render-compare/` | The measurement behind ADR 0006: two renderers drawing the same invoice pages |
+| `tools/box-overlay/` | Draws the ground-truth boxes over generated pages, to check them by eye |
 
 ## Working on the repo
 
@@ -65,8 +67,12 @@ with headless Chromium, which needs a one-time setup:
 ```bash
 uv run playwright install --with-deps --only-shell chromium     # the browser and the Linux libraries it loads (asks for sudo)
 uv run ledgerlens-datagen --seed 7 --count 3                    # JSON, one invoice per line
-uv run ledgerlens-datagen --seed 7 --count 3 --out data/samples # JSON, PDF and PNG per invoice (data/ is git-ignored)
+uv run ledgerlens-datagen --seed 7 --count 3 --out data/samples # PNG, PDF and ground-truth JSON per invoice (data/ is git-ignored)
+uv run python tools/box-overlay/overlay.py data/samples         # the boxes drawn over each page, in data/samples/boxes/
 ```
+
+What each file holds, the ZATCA rules followed, the test VAT numbers and the limits are in the
+[dataset card](datagen/DATASET_CARD.md).
 
 ## Checks
 
