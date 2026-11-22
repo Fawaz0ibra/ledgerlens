@@ -93,6 +93,7 @@ init_forbid_extra = true
 # all the code. The API image installs with --no-dev, so it never gets the generator.
 dev = [
     "httpx2==2.16.0",
+    "hypothesis==6.170.17",  # property tests: many generated inputs instead of a few picked by hand
     "ledgerlens-datagen",
     "mypy==2.4.1",
     "pypdfium2==5.14.0",  # reads the generator's PDFs in tests

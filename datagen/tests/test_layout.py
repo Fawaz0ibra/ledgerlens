@@ -11,7 +11,8 @@ import pypdfium2 as pdfium
 import pypdfium2.raw as pdfium_c
 import pytest
 
-from ledgerlens_datagen.generate import SyntheticInvoice, generate
+from ledgerlens_datagen.anomalies import Settings, generate_labelled
+from ledgerlens_datagen.generate import FIRST_DAY, SyntheticInvoice, generate
 from ledgerlens_datagen.layout import GroundTruth
 from ledgerlens_datagen.render import PNG_SCALE, POINTS_PER_PX, Renderer
 
@@ -19,7 +20,12 @@ SEED = 20261109
 _SAMPLE = list(generate(SEED, 20))
 STANDARD = [s for s in _SAMPLE if s.invoice.invoice_type == "standard"][:3]
 SIMPLIFIED = [s for s in _SAMPLE if s.invoice.invoice_type == "simplified"][:3]
-PAGES = [pytest.param(s, id=f"{s.invoice.invoice_type}-{s.index}") for s in STANDARD + SIMPLIFIED]
+# Design b, the layout drift brings: every value moves, so every box must still find it.
+_DRIFTED = [s for s in generate_labelled(SEED, 60, Settings(anomaly_rate=0, drift_from=FIRST_DAY)) if s.design == "b"]
+DESIGN_B = [next(s for s in _DRIFTED if s.invoice.invoice_type == kind) for kind in ("standard", "simplified")]
+ALL = STANDARD + SIMPLIFIED + DESIGN_B
+PAGES = [pytest.param(s, id=f"{s.invoice.invoice_type}-{s.design}-{s.index}") for s in ALL]
+Drawn = dict[tuple[int, str], tuple[GroundTruth, bytes]]
 
 # What every page prints: (field, lang), where lang tells apart the two copies of a value printed in both
 # languages.
@@ -41,8 +47,9 @@ ON_EVERY_PAGE = [
     ("invoice.currency", "ar"),
     ("invoice.currency", "en"),
 ]
-# Only a standard invoice names its buyer.
-BUYER = [
+# Only a standard invoice names its buyer, and the buyer's order it bills.
+STANDARD_ONLY = [
+    ("invoice.purchase_order_number", None),
     ("invoice.buyer.name_ar", None),
     ("invoice.buyer.name_en", None),
     ("buyer_address", "ar"),
@@ -63,12 +70,12 @@ PER_LINE = [
 
 
 @pytest.fixture(scope="module")
-def drawn(renderer: Renderer) -> dict[int, tuple[GroundTruth, bytes]]:
-    """Each sample page drawn once: its ground truth and its PDF, by invoice index."""
-    pages = {}
-    for synthetic in STANDARD + SIMPLIFIED:
+def drawn(renderer: Renderer) -> Drawn:
+    """Each sample page drawn once: its ground truth and its PDF, by invoice index and design."""
+    pages: Drawn = {}
+    for synthetic in ALL:
         page = renderer.render(synthetic)
-        pages[synthetic.index] = (GroundTruth(**dict(synthetic), layout=page.layout), page.pdf)
+        pages[synthetic.index, synthetic.design] = (GroundTruth(**dict(synthetic), layout=page.layout), page.pdf)
     return pages
 
 
@@ -100,13 +107,11 @@ def _pdf_characters(pdf: bytes) -> list[tuple[str, float, float]]:
 
 
 @pytest.mark.parametrize("synthetic", PAGES)
-def test_every_printed_value_has_exactly_one_box(
-    synthetic: SyntheticInvoice, drawn: dict[int, tuple[GroundTruth, bytes]]
-) -> None:
-    truth, _ = drawn[synthetic.index]
+def test_every_printed_value_has_exactly_one_box(synthetic: SyntheticInvoice, drawn: Drawn) -> None:
+    truth, _ = drawn[synthetic.index, synthetic.design]
     expected = list(ON_EVERY_PAGE)
     if truth.invoice.buyer is not None:
-        expected += BUYER
+        expected += STANDARD_ONLY
     for n in range(len(truth.invoice.lines)):
         expected += [(path.format(n=n), None) for path in PER_LINE]
     # Counted, so a value boxed twice fails too.
@@ -114,22 +119,21 @@ def test_every_printed_value_has_exactly_one_box(
 
 
 @pytest.mark.parametrize("synthetic", PAGES)
-def test_each_box_names_a_value_in_the_same_json(
-    synthetic: SyntheticInvoice, drawn: dict[int, tuple[GroundTruth, bytes]]
-) -> None:
-    truth, _ = drawn[synthetic.index]
+def test_each_box_names_a_value_in_the_same_json(synthetic: SyntheticInvoice, drawn: Drawn) -> None:
+    truth, _ = drawn[synthetic.index, synthetic.design]
     data = json.loads(truth.model_dump_json())
     for box in truth.layout.fields:
         assert _value_at(data, box.field) is not None, box.field
 
 
-def test_each_box_holds_the_value_as_the_page_prints_it(drawn: dict[int, tuple[GroundTruth, bytes]]) -> None:
-    truth, _ = drawn[STANDARD[0].index]
+def test_each_box_holds_the_value_as_the_page_prints_it(drawn: Drawn) -> None:
+    truth, _ = drawn[STANDARD[0].index, "a"]
     text = {(box.field, box.lang): box.text for box in truth.layout.fields}
     invoice = truth.invoice
     assert invoice.buyer is not None
     assert text["invoice.seller.name_en", None] == invoice.seller.name_en
     assert text["invoice.buyer.vat_number", "en"] == invoice.buyer.vat_number
+    assert text["invoice.purchase_order_number", None] == invoice.purchase_order_number
     assert text["invoice.invoice_type", "en"] == "Tax Invoice"  # the JSON says "standard"
     assert text["invoice.issue_date", None] == invoice.issue_date.strftime("%d/%m/%Y")  # the JSON: yyyy-mm-dd
     assert text["invoice.total", None] == f"{invoice.total:,.2f}"  # with a thousands comma
@@ -140,10 +144,8 @@ def test_each_box_holds_the_value_as_the_page_prints_it(drawn: dict[int, tuple[G
 
 
 @pytest.mark.parametrize("synthetic", PAGES)
-def test_boxes_are_inside_the_page_and_agree_in_both_units(
-    synthetic: SyntheticInvoice, drawn: dict[int, tuple[GroundTruth, bytes]]
-) -> None:
-    truth, _ = drawn[synthetic.index]
+def test_boxes_are_inside_the_page_and_agree_in_both_units(synthetic: SyntheticInvoice, drawn: Drawn) -> None:
+    truth, _ = drawn[synthetic.index, synthetic.design]
     width, height = truth.layout.png_size
     assert (width, height) == (1588, 2246)
     pixels_per_point = PNG_SCALE / POINTS_PER_PX
@@ -157,14 +159,12 @@ def test_boxes_are_inside_the_page_and_agree_in_both_units(
 
 
 @pytest.mark.parametrize("synthetic", PAGES)
-def test_the_pdf_has_each_text_inside_its_box(
-    synthetic: SyntheticInvoice, drawn: dict[int, tuple[GroundTruth, bytes]]
-) -> None:
+def test_the_pdf_has_each_text_inside_its_box(synthetic: SyntheticInvoice, drawn: Drawn) -> None:
     # The boxes come from the screen layout. Printing the PDF lays the page out again, so this checks that
     # the PDF put every text in its box: the characters whose centres fall inside, no more and no fewer.
     # They're compared sorted, because the PDF holds Arabic in the order it's drawn, and pdfium reads some
     # Arabic words back to front (مؤسسة as ةسسؤم).
-    truth, pdf = drawn[synthetic.index]
+    truth, pdf = drawn[synthetic.index, synthetic.design]
     characters = _pdf_characters(pdf)
     for box in truth.layout.fields:
         if box.text is None:

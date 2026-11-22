@@ -2,7 +2,8 @@
 name = "ledgerlens-datagen"
 # Raised whenever the same seed would give different files. Each dataset records the version that made it
 # (dataset.json), so two datasets with the same seed and version are the same data. 0.2.0: field boxes.
-version = "0.2.0"
+# 0.3.0: the buying side (vendor masters, agreed prices, purchase orders), labelled anomalies and drift.
+version = "0.3.0"
 description = "Seeded synthetic bilingual Arabic/English ZATCA-style invoices with ground-truth labels, for testing LedgerLens."
 license = "Apache-2.0"
 authors = [

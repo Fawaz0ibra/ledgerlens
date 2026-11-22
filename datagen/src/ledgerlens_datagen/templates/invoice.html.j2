@@ -53,9 +53,24 @@ table { width: 100%; border-collapse: collapse; }
 .totals .label-en { text-align: left; }
 .totals .grand td { background: #e9edf1; font-weight: 700; }
 .note { margin-top: 3mm; font-size: 8pt; color: #444; }
+/* Design b: the layout some vendors switch to once drift starts (lesson 1.7). The same values, moved and
+   restyled: the QR code and the seller swap sides, the invoice details sit beside the buyer, the line
+   columns run the other way, and the totals move to the right. */
+.design-b { font-size: 8.5pt; }
+.design-b header { flex-direction: row-reverse; }
+.design-b .title .ar { color: #1c4f8a; }
+.design-b .meta { display: flex; gap: 4mm; align-items: flex-start; margin-bottom: 4mm; }
+.design-b .meta .kv { width: 50%; margin-bottom: 0; }
+.design-b .meta .party { width: 50%; flex-direction: column; margin-bottom: 0; }
+.design-b .meta .party .side { width: 100%; }
+.design-b .meta .party .side + .side { margin-top: 2mm; }
+.design-b .lines { direction: ltr; }
+.design-b .lines th, .design-b .lines td { direction: rtl; }
+.design-b .lines th { background: #dde7f2; }
+.design-b .totals { margin-right: 0; margin-left: auto; }
 </style>
 </head>
-<body>
+<body class="design-{{ s.design }}">
 <div class="watermark">عينة اصطناعية · <span lang="en" dir="ltr">SYNTHETIC SAMPLE</span></div>
 <div class="page">
   <div class="marker">{{ marker_ar }} · <span lang="en" dir="ltr">{{ marker_en }}</span></div>
@@ -75,6 +90,7 @@ table { width: 100%; border-collapse: collapse; }
     <div class="qr"><img src="{{ qr_image }}" alt="QR" data-field="qr_code"></div>
   </header>
 
+  <div class="meta">
   <table class="kv">
     <tr>
       <td class="label-ar">رقم الفاتورة</td>
@@ -91,6 +107,13 @@ table { width: 100%; border-collapse: collapse; }
       <td class="value"><span data-field="issued_at">{{ s.issued_at | clock }}</span></td>
       <td class="label-en" lang="en" dir="ltr">Issue time</td>
     </tr>
+    {% if invoice.purchase_order_number is not none %}
+    <tr>
+      <td class="label-ar">رقم أمر الشراء</td>
+      <td class="value"><span data-field="invoice.purchase_order_number">{{ invoice.purchase_order_number }}</span></td>
+      <td class="label-en" lang="en" dir="ltr">Purchase order number</td>
+    </tr>
+    {% endif %}
   </table>
 
   {% if buyer is not none %}
@@ -109,6 +132,7 @@ table { width: 100%; border-collapse: collapse; }
     </div>
   </div>
   {% endif %}
+  </div>
 
   <table class="lines">
     <thead>

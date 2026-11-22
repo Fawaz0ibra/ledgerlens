@@ -12,8 +12,10 @@ import pytest
 
 from ledgerlens.contracts.checks import check_invoice
 from ledgerlens_datagen import qr
+from ledgerlens_datagen.anomalies import generate_labelled
 from ledgerlens_datagen.cli import main
 from ledgerlens_datagen.generate import SyntheticInvoice, generate
+from ledgerlens_datagen.purchasing import build_purchasing
 from ledgerlens_datagen.vat import is_test_vat_number
 from ledgerlens_datagen.world import build_world
 
@@ -72,6 +74,12 @@ def test_no_vat_number_outside_the_test_scheme_appears_anywhere() -> None:
             assert is_test_vat_number(number), (s.invoice.invoice_number, number)
         assert s.invoice.seller.vat_number is not None
         assert is_test_vat_number(s.invoice.seller.vat_number)
+    # And the buyers' records, which the command writes next to the invoices.
+    world = build_world(SEED)
+    for records in (world, build_purchasing(SEED, world)):
+        found = _VAT_SHAPED.findall(records.model_dump_json())
+        assert found
+        assert all(is_test_vat_number(number) for number in found)
 
 
 def test_the_qr_code_holds_the_invoices_own_values() -> None:
@@ -138,7 +146,7 @@ def test_the_output_is_byte_identical_in_new_processes_with_different_hash_seeds
 def test_the_command_prints_one_json_invoice_per_line_and_nothing_is_lost(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    main(["--seed", str(SEED), "--count", "3"])
+    main(["--seed", str(SEED), "--count", "30"])
     lines = capsys.readouterr().out.splitlines()
-    # Reading the JSON back gives exactly the same invoices: amounts, dates and Arabic text all survive.
-    assert [SyntheticInvoice.model_validate_json(line) for line in lines] == INVOICES[:3]
+    # Reading the JSON back gives exactly the same invoices: amounts, dates, Arabic text and labels all survive.
+    assert [SyntheticInvoice.model_validate_json(line) for line in lines] == list(generate_labelled(SEED, 30))
