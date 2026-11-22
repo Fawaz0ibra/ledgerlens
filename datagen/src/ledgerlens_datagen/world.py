@@ -7,6 +7,7 @@ coincidence, and every invoice also carries a test-only VAT number and a visible
 
 import random
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Literal, assert_never
 
 from pydantic import BaseModel, ConfigDict
@@ -62,6 +63,9 @@ class Company(_Record):
 class World(_Record):
     companies: tuple[Company, ...]
 
+    def company(self, vat_number: str) -> Company:
+        return {company.vat_number: company for company in self.companies}[vat_number]
+
 
 @dataclass(frozen=True)
 class Item:
@@ -73,6 +77,19 @@ class Item:
     max_price: int
     unit: Literal["each", "hour", "kg"]
     max_quantity: int
+
+    def price(self, rng: random.Random) -> Decimal:
+        riyals = rng.randint(self.min_price, self.max_price)
+        # Most prices are whole riyals, some end in .50, and some have any halalas.
+        style = rng.random()
+        if style < 0.6:
+            halalas = 0
+        elif style < 0.8:
+            halalas = 50
+        else:
+            halalas = rng.randint(1, 99)
+        # Built as text: Decimal("122.00") keeps both decimal places, where Decimal(12200) / 100 gives Decimal("122").
+        return Decimal(f"{riyals}.{halalas:02d}")
 
 
 # Name parts: (English, Arabic). An Arabic company name reads form, root, trade: شركة سحاب للطباعة.

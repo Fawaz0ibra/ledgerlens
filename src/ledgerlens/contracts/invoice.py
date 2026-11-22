@@ -83,6 +83,9 @@ class Invoice(_Contract):
     invoice_type: Literal["standard", "simplified"]  # ZATCA: standard = B2B, simplified = B2C
     issue_date: date
     currency: Currency
+    # The buyer's purchase order this invoice bills, when the invoice prints it (ZATCA's XML: OrderReference).
+    # The buyer matches the invoice against that order; the invoice alone can't show a price was agreed.
+    purchase_order_number: Annotated[str, StringConstraints(min_length=1, max_length=64)] | None = None
     seller: Party
     buyer: Party | None = None
     lines: tuple[LineItem, ...] = Field(min_length=1)

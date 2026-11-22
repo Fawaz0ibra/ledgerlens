@@ -67,7 +67,7 @@ with headless Chromium, which needs a one-time setup:
 ```bash
 uv run playwright install --with-deps --only-shell chromium     # the browser and the Linux libraries it loads (asks for sudo)
 uv run ledgerlens-datagen --seed 7 --count 3                    # JSON, one invoice per line
-uv run ledgerlens-datagen --seed 7 --count 3 --out data/samples # PNG, PDF and ground-truth JSON per invoice (data/ is git-ignored)
+uv run ledgerlens-datagen --seed 7 --count 3 --out data/samples # PNG, PDF and ground-truth JSON per invoice, and the buyers' records (data/ is git-ignored)
 uv run python tools/box-overlay/overlay.py data/samples         # the boxes drawn over each page, in data/samples/boxes/
 ```
 
