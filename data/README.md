@@ -29,3 +29,4 @@ downloaded by a script or published on Hugging Face, and their exact version is 
 | Dataset | Source | Licence | Version or date | Used for | Lesson |
 |---|---|---|---|---|---|
 | LedgerLens synthetic invoices ([dataset card](../datagen/DATASET_CARD.md)) | Our generator, `datagen/`; made on demand, not stored | Apache-2.0 (fonts: OFL 1.1) | `ledgerlens-datagen` 0.3.0; each folder's `dataset.json` records version, browser and seed | Tests now; fine-tuning, vision and evals from Module 3 | 1.6 |
+| LedgerLens synthetic invoices, release v0.3.0 | [Hugging Face: Fawaz0ibra/ledgerlens-synthetic-invoices](https://huggingface.co/datasets/Fawaz0ibra/ledgerlens-synthetic-invoices), tag `v0.3.0` | Apache-2.0 | Generator 0.3.0 at commit 35f31d8, seed 20261122, 2,000 invoices, drift from 2026-07-01 | Fine-tuning, vision, evals and drift from Module 3; load with `revision="v0.3.0"` | 1.7 |
