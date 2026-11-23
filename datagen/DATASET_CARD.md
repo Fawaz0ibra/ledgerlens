@@ -28,6 +28,10 @@ records the generator version, the browser, the seed and the count. Two runs wit
 identical JSON and PNG files; the PDFs differ, because each records when it was made. The generator's
 version goes up whenever the same seed would give different files.
 
+Fixed releases, split by date, are on the Hugging Face Hub as
+[Fawaz0ibra/ledgerlens-synthetic-invoices](https://huggingface.co/datasets/Fawaz0ibra/ledgerlens-synthetic-invoices),
+one tag per generator version ([ADR 0009](../docs/adr/0009-publish-dataset-releases-on-the-hugging-face-hub.md)).
+
 ## Files
 
 | File | Holds |

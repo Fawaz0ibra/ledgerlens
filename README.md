@@ -33,6 +33,7 @@ the page. Nothing reads invoice images yet.
 | `tools/gpu-check/` | Checks that PyTorch can use the GPU, on the host and inside Docker |
 | `tools/render-compare/` | The measurement behind ADR 0006: two renderers drawing the same invoice pages |
 | `tools/box-overlay/` | Draws the ground-truth boxes over generated pages, to check them by eye |
+| `tools/hf-release/` | Packs a generated folder into a Hugging Face dataset release: Parquet splits by date, records, card (ADR 0009) |
 
 ## Working on the repo
 
